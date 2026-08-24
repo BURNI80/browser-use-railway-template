@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Browser Use</title>
+<style>
+  :root { --bg:#0d1117; --panel:#161b22; --border:#30363d; --text:#e6edf3; --muted:#8b949e; --accent:#58a6ff; --green:#3fb950; --red:#f85149; --yellow:#d29922; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; background:var(--bg); color:var(--text); }
+  a { color:var(--accent); text-decoration:none; }
+  .wrap { max-width:860px; margin:0 auto; padding:24px 16px 64px; }
+  header { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; margin-bottom:20px; }
+  h1 { font-size:22px; margin:0; }
+  h1 span { color:var(--muted); font-weight:400; font-size:14px; }
+  .chips { display:flex; gap:8px; flex-wrap:wrap; }
+  .chip { font-size:12px; padding:4px 10px; border-radius:999px; border:1px solid var(--border); color:var(--muted); }
+  .chip.on { color:var(--green); border-color:var(--green); }
+  .chip.off { color:var(--red); border-color:var(--red); cursor:pointer; }
+  .panel { background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:16px; margin-bottom:16px; }
+  label { display:block; font-size:13px; color:var(--muted); margin:10px 0 4px; }
+  textarea, input[type=text], input[type=password], input[type=number] { width:100%; background:var(--bg); color:var(--text); border:1px solid var(--border); border-radius:6px; padding:10px; font-size:14px; font-family:inherit; }
+  textarea { min-height:90px; resize:vertical; }
+  .row { display:flex; gap:12px; flex-wrap:wrap; }
+  .row > div { flex:1; min-width:160px; }
+  button.primary { background:var(--accent); color:#fff; border:none; border-radius:6px; padding:11px 22px; font-size:15px; font-weight:600; cursor:pointer; margin-top:14px; }
+  button.primary:disabled { opacity:.5; cursor:not-allowed; }
+  .hint { font-size:12px; color:var(--muted); margin-top:6px; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th { text-align:left; color:var(--muted); font-weight:500; padding:8px; border-bottom:1px solid var(--border); }
+  td { padding:8px; border-bottom:1px solid var(--border); vertical-align:top; word-break:break-word; }
+  tr.click { cursor:pointer; } tr.click:hover td { background:rgba(88,166,255,.06); }
+  .badge { display:inline-block; font-size:11px; padding:2px 8px; border-radius:999px; border:1px solid var(--border); }
+  .b-queued { color:var(--yellow); border-color:var(--yellow); }
+  .b-running { color:var(--accent); border-color:var(--accent); animation:pulse 1.2s infinite; }
+  .b-finished-ok { color:var(--green); border-color:var(--green); }
+  .b-finished-bad { color:var(--red); border-color:var(--red); }
+  .b-failed { color:var(--red); border-color:var(--red); }
+  @keyframes pulse { 50% { opacity:.4; } }
+  pre { white-space:pre-wrap; word-break:break-word; background:var(--bg); border:1px solid var(--border); border-radius:6px; padding:12px; font-size:13px; max-height:340px; overflow:auto; margin:8px 0 0; }
+  #detail { display:none; }
+  .muted { color:var(--muted); font-size:13px; }
+  footer { text-align:center; margin-top:28px; font-size:12px; color:var(--muted); }
+  dialog { background:var(--panel); color:var(--text); border:1px solid var(--border); border-radius:10px; padding:20px; max-width:420px; width:92%; }
+  dialog::backdrop { background:rgba(0,0,0,.6); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Browser Use <span>self-hosted agent server</span></h1>
+    <div class="chips" id="chips"></div>
+  </header>
+
+  <div class="panel" id="setup" style="display:none"></div>
+
+  <div class="panel">
+    <label for="task">Task — describe what the agent should do in the browser</label>
+    <textarea id="task" placeholder="Example: Go to hacker-news, find the top Show HN post and return its title and URL"></textarea>
+    <div class="row">
+      <div>
+        <label for="model">Model (optional)</label>
+        <input id="model" type="text" list="models" placeholder="auto" />
+        <datalist id="models"></datalist>
+      </div>
+      <div style="max-width:140px">
+        <label for="steps">Max steps</label>
+        <input id="steps" type="number" value="25" min="1" max="200" />
+      </div>
+    </div>
+    <button class="primary" id="run">Run agent</button>
+    <div class="hint">The browser runs headless inside this service. Results appear below when the run finishes.</div>
+  </div>
+
+  <div class="panel">
+    <table>
+      <thead><tr><th>Status</th><th>Task</th><th>Model</th><th>Steps</th></tr></thead>
+      <tbody id="runs"><tr><td colspan="4" class="muted">No runs yet.</td></tr></tbody>
+    </table>
+  </div>
+
+  <div class="panel" id="detail">
+    <strong id="d-title"></strong>
+    <pre id="d-body"></pre>
+    <div class="hint" id="d-links"></div>
+  </div>
+
+  <footer>Powered by <a href="https://github.com/browser-use/browser-use" target="_blank">browser-use</a> · <a href="/docs" target="_blank">API docs (Swagger)</a> · <a href="/health" target="_blank">/health</a></footer>
+</div>
+
+<dialog id="tokenDialog">
+  <p style="margin-top:0"><strong>This server is protected.</strong></p>
+  <input type="password" id="tokenInput" placeholder="Access token (BU_API_TOKEN)" />
+  <button class="primary" id="tokenSave">Save</button>
+</dialog>
+
+<script>
+const $ = (s) => document.querySelector(s);
+let token = localStorage.getItem('bu_token') || '';
+
+async function api(path, opts = {}) {
+  const headers = Object.assign({}, opts.headers || {});
+  if (token) headers['X-API-Token'] = token;
+  const res = await fetch(path, Object.assign({}, opts, { headers }));
+  if (res.status === 401) { $('#tokenDialog').showModal(); throw new Error('unauthorized'); }
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(typeof data.detail === 'string' ? data.detail : JSON.stringify(data.detail));
+  return data;
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+async function init() {
+  try {
+    health = await api('/health');
+    renderChips(health);
+    const provs = await api('/api/providers');
+    renderSetup(provs.providers);
+    $('#models').innerHTML = provs.providers.filter((p) => p.configured).map((p) => `<option value="${p.name}/${p.example_model}">`).join('');
+    refreshRuns();
+    if (!window._polling) { window._polling = true; setInterval(refreshRuns, 2500); }
+  } catch (e) {
+    $('#setup').style.display = 'block';
+    $('#setup').textContent = 'Cannot reach /health — is the service still starting?';
+  }
+}
+
+let health = null;
+
+function renderChips(h) {
+  const chips = [];
+  for (const [name, on] of Object.entries(h.providers_configured || {})) {
+    chips.push(`<span class="chip ${on ? 'on' : 'off'}" title="${on ? 'configured' : 'missing API key'}">${on ? '&#10003;' : '&#10007;'} ${escapeHtml(name)}</span>`);
+  }
+  if (h.auth_required) chips.push('<span class="chip">&#128274; token required</span>');
+  chips.push(`<span class="chip">${h.active_runs}/${h.max_concurrent_runs} running</span>`);
+  chips.push(`<span class="chip">v${escapeHtml(String(h.library_version))}</span>`);
+  $('#chips').innerHTML = chips.join('');
+}
+
+function renderSetup(providers) {
+  const missing = providers.filter((p) => !p.configured);
+  const any = providers.some((p) => p.configured);
+  if (!missing.length) { $('#setup').style.display = 'none'; return; }
+  const rows = missing.map((p) =>
+    `<li style="margin:6px 0"><code>${p.env_var}</code> &mdash; get a key at <a href="${p.get_key_url}" target="_blank">${escapeHtml(p.get_key_url.replace('https://', '').replace(/\/$/, ''))}</a>${!any && p.name === 'google' ? ' <em>(free tier, recommended)</em>' : ''}</li>`
+  ).join('');
+  $('#setup').innerHTML = any
+    ? `<strong class="muted">Optional providers not configured:</strong><ul style="margin:8px 0 0">${rows}</ul>`
+    : `<strong>&#9888; No LLM API key configured yet.</strong> Add one of these variables to your Railway service (<em>Variables</em> tab), then redeploy:<ul style="margin:8px 0 0">${rows}</ul>`;
+  $('#setup').style.display = 'block';
+}
+
+function badge(r) {
+  if (r.status === 'queued') return '<span class="badge b-queued">queued</span>';
+  if (r.status === 'running') return '<span class="badge b-running">running</span>';
+  if (r.status === 'finished') return r.success ? '<span class="badge b-finished-ok">done</span>' : '<span class="badge b-finished-bad">done (agent unsure)</span>';
+  return '<span class="badge b-failed">failed</span>';
+}
+
+async function refreshRuns() {
+  try {
+    const runs = await api('/api/runs');
+    if (!runs.length) { $('#runs').innerHTML = '<tr><td colspan="4" class="muted">No runs yet.</td></tr>'; return; }
+    $('#runs').innerHTML = runs.map((r) =>
+      `<tr class="click" onclick="showDetail('${r.id}')"><td>${badge(r)}</td><td>${escapeHtml(r.task.slice(0, 80))}${r.task.length > 80 ? '&hellip;' : ''}</td><td>${escapeHtml(r.model || 'auto')}</td><td>${r.steps}</td></tr>`
+    ).join('');
+    if ($('#detail').dataset.id && !$('#detail').style.display.includes('none')) showDetail($('#detail').dataset.id, true);
+  } catch (e) {}
+}
+
+window.showDetail = async function(id, silent) {
+  try {
+    const r = await api('/api/runs/' + id);
+    $('#detail').dataset.id = id;
+    $('#d-title').textContent = 'Run ' + r.id + ' — ' + r.status + (r.finished_at ? ' · finished ' + r.finished_at.slice(11, 19) + 'Z' : '');
+    let body = '';
+    if (r.error) body += 'ERROR\n' + r.error + '\n\n';
+    if (r.result) body += 'RESULT\n' + r.result + '\n\n';
+    if ((r.errors || []).length) body += 'AGENT ERRORS\n' + r.errors.join('\n') + '\n\n';
+    if ((r.urls || []).length) body += 'PAGES VISITED\n' + r.urls.join('\n') + '\n\n';
+    body += 'TASK\n' + r.task;
+    $('#d-body').textContent = body || '(no output yet)';
+    $('#d-links').innerHTML = `curl -X POST ${location.origin}/api/runs -H "Content-Type: application/json"${token ? ` -H "X-API-Token: ***"` : ''} -d '{"task":"..."}'`;
+    $('#detail').style.display = 'block';
+  } catch (e) { if (!silent) alert(e.message); }
+};
+
+$('#run').onclick = async function () {
+  const btn = this;
+  const task = $('#task').value.trim();
+  if (!task) { $('#task').focus(); return; }
+  btn.disabled = true; btn.textContent = 'Starting...';
+  try {
+    const payload = { task };
+    const model = $('#model').value.trim();
+    if (model) payload.model = model;
+    const steps = parseInt($('#steps').value, 10);
+    if (steps) payload.max_steps = steps;
+    const r = await api('/api/runs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    $('#task').value = '';
+    showDetail(r.id);
+    refreshRuns();
+  } catch (e) {
+    alert(e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = 'Run agent';
+  }
+};
+
+$('#tokenSave').onclick = function () {
+  token = $('#tokenInput').value.trim();
+  localStorage.setItem('bu_token', token);
+  $('#tokenDialog').close();
+  init();
+};
+
+init();
+</script>
+</body>
+</html>
