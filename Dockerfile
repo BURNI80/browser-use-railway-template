@@ -36,11 +36,8 @@ COPY server.py .
 COPY static ./static
 
 RUN useradd --create-home --uid 1000 browseruse \
-    && mkdir -p /data/config /data/downloads /home/browseruse/.config \
-    && ln -s /data/config /home/browseruse/.config/browseruse \
-    && chown -R browseruse:browseruse /app /data /home/browseruse
-
-USER browseruse
+    && mkdir -p /home/browseruse/.config \
+    && ln -s /data/config /home/browseruse/.config/browseruse
 
 ENV HOME=/home/browseruse \
     BROWSER_USE_CONFIG_DIR=/home/browseruse/.config/browseruse \
@@ -48,4 +45,4 @@ ENV HOME=/home/browseruse \
 
 EXPOSE 8000
 
-CMD ["sh", "-c", "mkdir -p /data/config /data/downloads && exec uvicorn server:app --host 0.0.0.0 --port ${PORT:-8000}"]
+CMD ["sh", "-c", "mkdir -p /data/config /data/downloads && chown -R browseruse:browseruse /data && exec su -s /bin/sh -c 'exec uvicorn server:app --host 0.0.0.0 --port ${PORT:-8000}' browseruse"]
