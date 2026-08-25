@@ -15,11 +15,15 @@ This template deploys one Docker service that packages the official `browser-use
 
 ## Dependencies for Browser Use Hosting
 
-- **LLM API key** (required): `GOOGLE_API_KEY` ([free tier available](https://aistudio.google.com/apikey)), or `BROWSER_USE_API_KEY`, `OPENAI_API_KEY`, or `ANTHROPIC_API_KEY` depending on the provider you choose.
-- **Railway Volume** (pre-configured): 500MB mounted at `/data` for agent config and downloaded files.
-- Everything else is baked into the image: Python 3.12, headless Chromium, fonts, and all Python dependencies.
+Browser Use needs a headless browser and an LLM to drive it. This template bundles everything except the LLM key:
 
-## Environment Variables
+### Deployment Dependencies
+
+- **LLM API key** (required): set `GOOGLE_API_KEY` ([free tier available](https://aistudio.google.com/apikey)) right after deploying — or `BROWSER_USE_API_KEY`, `OPENAI_API_KEY`, or `ANTHROPIC_API_KEY` if you prefer another provider.
+- **Railway Volume** (pre-configured by this template): 500MB persistent storage mounted at `/data` for agent configuration and downloaded files.
+- **Headless Chromium + fonts**: already baked into the Docker image (Python 3.12 slim + Debian Chromium), nothing to install.
+
+### Environment Variables
 
 | Variable | Required | Default | Description |
 | --- | --- | --- | --- |
