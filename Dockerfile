@@ -46,8 +46,6 @@ ENV HOME=/home/browseruse \
     BROWSER_USE_CONFIG_DIR=/home/browseruse/.config/browseruse \
     BU_DATA_DIR=/data
 
-VOLUME /data
-
 EXPOSE 8000
 
 CMD ["sh", "-c", "mkdir -p /data/config /data/downloads && exec uvicorn server:app --host 0.0.0.0 --port ${PORT:-8000}"]
